@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MALIBU // SENTINEL</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="styles.css"></head>
+<body>
+<div id="boot"><pre id="bootlog"></pre></div>
+<div id="demobanner" hidden>DEMO MODE · SIMULATED DATA</div>
+<header>
+ <div><h1>MALIBU // SENTINEL</h1><p>VEHICLE OPERATIONS CONSOLE · 2024 CHEVROLET MALIBU</p></div>
+ <div class="hr"><span class="led"></span><b>SYSTEM STATUS: ONLINE</b>
+  <button id="tabC" class="on">CONSOLE</button><button id="tabA">AWARENESS</button>
+  <button id="shareBtn">LOCATION SHARING: OFF</button><button id="demoBtn">DEMO MODE: OFF</button></div>
+</header>
+<main id="con">
+ <section class="card hero"><h2>VEHICLE TELEMETRY <span id="b_veh"></span></h2>
+  <div class="gauge"><svg viewBox="0 0 200 200"><g transform="rotate(135 100 100)">
+   <circle class="trk" cx="100" cy="100" r="88"/><circle id="arc" class="val" cx="100" cy="100" r="88"/></g></svg>
+   <div class="gtxt"><div id="spd">—</div><small>MPH · VEHICLE SPEED (OBD)</small><em id="gpsspd"></em></div></div>
+  <div class="kv" id="tele"></div></section>
+ <section class="card"><h2>GPS <span id="b_gps"></span></h2><div class="kv" id="geo"></div>
+  <small class="note">Position stays in browser memory. Never sent anywhere by the GPS module.</small></section>
+ <section class="card"><h2>SATELLITE POSITION <span id="b_sat"></span></h2>
+  <canvas id="sat" width="600" height="300"></canvas><div id="satlist"></div>
+  <small class="note">SOURCE: PUBLIC ORBITAL DATA (CelesTrak), SGP4 computed locally. Not detected by the phone.</small></section>
+ <section class="card"><h2>GEOHAZARD · USGS <span id="b_quake"></span></h2><div class="seg" id="eqctl"></div><div id="eq"></div></section>
+ <section class="card"><h2>WEATHER <span id="b_wx"></span></h2><div class="kv" id="wx"></div></section>
+ <section class="card"><h2>PUBLIC INFORMATION <span id="b_pub"></span></h2><div id="pub"></div></section>
+ <section class="card"><h2>AIRCRAFT · ADS-B <span id="b_air"></span></h2><div id="air"></div></section>
+ <section class="card"><h2>MARKET <span id="b_mkt"></span></h2><div id="mkt"></div></section>
+ <section class="card"><h2>RF ENVIRONMENT <span id="b_rf"></span></h2>
+  <canvas id="spec" width="600" height="130"></canvas><canvas id="wf" width="600" height="90"></canvas></section>
+ <section class="card"><h2>NETWORK <span id="b_net"></span></h2><div class="kv" id="net"></div></section>
+ <section class="card"><h2>BLUETOOTH <span id="b_bt"></span></h2><div class="kv" id="bt"></div></section>
+ <section class="card wide"><h2>DATA SOURCES <small>configure in CONFIG at top of app.js</small></h2><div id="src"></div></section>
+ <section class="card"><h2>OSINT LAUNCHER <small>public · opens externally</small></h2><div id="osint"></div></section>
+ <section class="card wide"><h2>EVENT STREAM <small>time · module · event · source · status</small></h2><div id="log"></div></section>
+</main>
+<main id="awr" hidden>
+ <section class="card wide"><h2>LOCAL AWARENESS <small id="awsrc"></small></h2><div id="ctl"></div>
+  <div id="lmap"></div><div id="legend"></div>
+  <small class="note">Layers are public-data overlays. Nothing here was physically detected by the phone. Map tiles: OpenStreetMap (tile requests reveal the viewed area).</small></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
+<script src="app.js"></script></body></html>
