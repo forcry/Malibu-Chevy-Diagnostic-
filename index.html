@@ -1,47 +1,257 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>MALIBU // SENTINEL</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
-<link rel="stylesheet" href="styles.css"></head>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROAD // INTEL</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#05070A;--panel:#0B1017;--cy:#00E5FF;--cy2:#00A8C6;--warn:#FFB000;--bad:#FF4057;--pu:#A855F7;--tx:#EAFBFF;--dim:#6f8a93}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font:16px/1.35 system-ui,Segoe UI,sans-serif}
+body{display:grid;grid-template-rows:auto 1fr;background-image:linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px);background-size:40px 40px}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(0,229,255,.25);letter-spacing:.2em;font-weight:600}
+header b{color:var(--cy)} .chip{font-size:.8rem;letter-spacing:.08em;color:var(--dim)} .ok{color:var(--cy)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+main{display:grid;gap:10px;padding:10px;min-height:0;grid-template-columns:minmax(300px,34%) 1fr;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"speed map" "intel map" "vision map"}
+.panel{background:var(--panel);border:1px solid rgba(0,229,255,.28);border-radius:14px;padding:12px;min-height:0}
+#speedP{grid-area:speed;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+#speed{font-size:clamp(3.5rem,11vw,7rem);font-weight:200;line-height:1;color:var(--cy);text-shadow:0 0 14px rgba(0,229,255,.35)}
+#unit{color:var(--dim);letter-spacing:.2em;cursor:pointer;padding:12px} .meta{text-align:right;font-size:.85rem;color:var(--dim)} .meta div{color:var(--tx)}
+#intelP{grid-area:intel;display:flex;flex-direction:column;overflow:hidden}
+#intelP h2,.wx h2{margin:0 0 6px;font-size:.8rem;letter-spacing:.25em;color:var(--cy2);font-weight:600}
+#alert{display:none;background:rgba(255,64,87,.15);border:1px solid var(--bad);color:var(--bad);border-radius:10px;padding:10px;margin-bottom:8px;font-weight:600}
+#list{overflow:auto;flex:1} .ev{border-left:3px solid var(--c);padding:6px 8px;margin:6px 0;background:rgba(255,255,255,.02);border-radius:6px}
+.ev summary{list-style:none;display:flex;justify-content:space-between;gap:8px;min-height:44px;align-items:center;cursor:pointer}
+.ev small{color:var(--dim);display:block} .dist{color:var(--tx);font-weight:600;white-space:nowrap}
+.empty{color:var(--dim);padding:12px 4px}
+#status{font-size:.72rem;color:var(--dim);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px}
+#mapP{grid-area:map;position:relative;padding:0;overflow:hidden} #map{height:100%;min-height:260px;background:var(--bg)}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.75) contrast(.9) saturate(.5)}
+.leaflet-container{font:inherit} path.glow{filter:drop-shadow(0 0 4px currentColor)}
+.fab{position:absolute;z-index:500;background:var(--panel);color:var(--cy);border:1px solid var(--cy);border-radius:12px;min-width:52px;min-height:52px;font-size:1rem;padding:0 14px}
+#recenter{right:10px;bottom:24px;display:none} #gear{right:10px;top:10px}
+.wx{position:absolute;left:10px;top:10px;z-index:500;background:rgba(11,16,23,.9);border:1px solid rgba(0,229,255,.28);border-radius:12px;padding:8px 12px}
+.wx div{font-size:1.4rem} .wx small{color:var(--dim)}
+#set{display:none;position:absolute;inset:0;z-index:900;background:rgba(5,7,10,.96);padding:18px;overflow:auto}
+#set label{display:flex;justify-content:space-between;align-items:center;min-height:52px;border-bottom:1px solid rgba(0,229,255,.15)}
+#set select,#set input{min-width:56px;min-height:40px;font-size:1rem;background:var(--panel);color:var(--tx);border:1px solid var(--cy2);border-radius:8px}
+header{flex-wrap:wrap;gap:4px 14px} #sys{display:flex;flex-wrap:wrap;gap:2px 14px} .dim{color:var(--dim)}
+#visionP{grid-area:vision} #visionP h2{margin:0;font-size:.8rem;letter-spacing:.25em;color:var(--cy2);font-weight:600}
+.vh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.sm{min-width:64px;min-height:44px;background:var(--panel);color:var(--cy);border:1px solid var(--cy2);border-radius:10px;font-size:.8rem;padding:0 10px;margin-left:6px}
+#vState{font-weight:600} #vCounts{color:var(--dim);font-size:.9rem;margin-top:4px} #vCv{display:none;width:100%;max-height:34vh;border-radius:10px;background:#000;margin-top:6px}
+/* Portrait / narrow: stack */
+@media (max-aspect-ratio:1/1),(max-width:760px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(180px,1fr) auto minmax(220px,1fr);grid-template-areas:"speed" "intel" "vision" "map"}}
+@media (max-height:620px){#speed{font-size:3.5rem}}
+</style>
+</head>
 <body>
-<div id="boot"><pre id="bootlog"></pre></div>
-<div id="demobanner" hidden>DEMO MODE · SIMULATED DATA</div>
-<header>
- <div><h1>MALIBU // SENTINEL</h1><p>VEHICLE OPERATIONS CONSOLE · 2024 CHEVROLET MALIBU</p></div>
- <div class="hr"><span class="led"></span><b>SYSTEM STATUS: ONLINE</b>
-  <button id="tabC" class="on">CONSOLE</button><button id="tabA">AWARENESS</button>
-  <button id="shareBtn">LOCATION SHARING: OFF</button><button id="demoBtn">DEMO MODE: OFF</button></div>
-</header>
-<main id="con">
- <section class="card hero"><h2>VEHICLE TELEMETRY <span id="b_veh"></span></h2>
-  <div class="gauge"><svg viewBox="0 0 200 200"><g transform="rotate(135 100 100)">
-   <circle class="trk" cx="100" cy="100" r="88"/><circle id="arc" class="val" cx="100" cy="100" r="88"/></g></svg>
-   <div class="gtxt"><div id="spd">—</div><small>MPH · VEHICLE SPEED (OBD)</small><em id="gpsspd"></em></div></div>
-  <div class="kv" id="tele"></div></section>
- <section class="card"><h2>GPS <span id="b_gps"></span></h2><div class="kv" id="geo"></div>
-  <small class="note">Position stays in browser memory. Never sent anywhere by the GPS module.</small></section>
- <section class="card"><h2>SATELLITE POSITION <span id="b_sat"></span></h2>
-  <canvas id="sat" width="600" height="300"></canvas><div id="satlist"></div>
-  <small class="note">SOURCE: PUBLIC ORBITAL DATA (CelesTrak), SGP4 computed locally. Not detected by the phone.</small></section>
- <section class="card"><h2>GEOHAZARD · USGS <span id="b_quake"></span></h2><div class="seg" id="eqctl"></div><div id="eq"></div></section>
- <section class="card"><h2>WEATHER <span id="b_wx"></span></h2><div class="kv" id="wx"></div></section>
- <section class="card"><h2>PUBLIC INFORMATION <span id="b_pub"></span></h2><div id="pub"></div></section>
- <section class="card"><h2>AIRCRAFT · ADS-B <span id="b_air"></span></h2><div id="air"></div></section>
- <section class="card"><h2>MARKET <span id="b_mkt"></span></h2><div id="mkt"></div></section>
- <section class="card"><h2>RF ENVIRONMENT <span id="b_rf"></span></h2>
-  <canvas id="spec" width="600" height="130"></canvas><canvas id="wf" width="600" height="90"></canvas></section>
- <section class="card"><h2>NETWORK <span id="b_net"></span></h2><div class="kv" id="net"></div></section>
- <section class="card"><h2>BLUETOOTH <span id="b_bt"></span></h2><div class="kv" id="bt"></div></section>
- <section class="card wide"><h2>DATA SOURCES <small>configure in CONFIG at top of app.js</small></h2><div id="src"></div></section>
- <section class="card"><h2>OSINT LAUNCHER <small>public · opens externally</small></h2><div id="osint"></div></section>
- <section class="card wide"><h2>EVENT STREAM <small>time · module · event · source · status</small></h2><div id="log"></div></section>
+<header><span>ROAD // <b>INTEL</b></span><span id="sys">
+  <span id="cCam" class="chip dim">CAMERA ○ OFF</span><span id="cAi" class="chip dim">AI ○ OFF</span>
+  <span id="gps" class="chip warn">GPS ○ WAITING</span><span id="cWx" class="chip warn">WEATHER ○ WAITING</span><span id="cRi" class="chip warn">ROAD INTEL ○ WAITING</span></span></header>
+<main>
+  <section class="panel" id="speedP">
+    <div><div id="speed">--</div><span id="unit" role="button">MPH</span></div>
+    <div class="meta">HEADING <div id="hdg">--</div>POSITION <div id="pos">--</div>TRIP <div id="trip">0.0 mi</div></div>
+  </section>
+  <section class="panel" id="intelP">
+    <h2>ROAD INTEL</h2><div id="alert"></div><div id="list"><div class="empty">Waiting for GPS…</div></div><div id="status"></div>
+  </section>
+  <section class="panel" id="visionP">
+    <div class="vh"><h2>VISION // TRAFFIC</h2><span><button class="sm" id="vView">CAMERA VIEW</button><button class="sm" id="vOn">ENABLE</button></span></div>
+    <div id="vState" class="dim">VISION DISABLED — tap ENABLE to connect to the laptop service.</div>
+    <div id="vCounts"></div><canvas id="vCv"></canvas>
+  </section>
+  <section class="panel" id="mapP">
+    <div id="map"></div>
+    <div class="wx"><h2>WEATHER</h2><div id="wxT">--</div><small id="wxS">Waiting for GPS</small></div>
+    <button class="fab" id="gear" aria-label="Settings">⚙</button>
+    <button class="fab" id="recenter">◎ RECENTER</button>
+    <div id="set">
+      <h2 style="letter-spacing:.2em;color:var(--cy)">SETTINGS</h2>
+      <label>Alert radius <select id="sRadius"><option>1</option><option>5</option><option>10</option><option>25</option></select></label>
+      <label>Speed units <select id="sUnit"><option value="mph">MPH</option><option value="kmh">KM/H</option></select></label>
+      <label>Show construction <input type="checkbox" id="sCons"></label>
+      <button class="fab" id="close" style="position:static;margin-top:16px">DONE</button>
+    </div>
+  </section>
 </main>
-<main id="awr" hidden>
- <section class="card wide"><h2>LOCAL AWARENESS <small id="awsrc"></small></h2><div id="ctl"></div>
-  <div id="lmap"></div><div id="legend"></div>
-  <small class="note">Layers are public-data overlays. Nothing here was physically detected by the phone. Map tiles: OpenStreetMap (tile requests reveal the viewed area).</small></section>
-</main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
-<script src="app.js"></script></body></html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============ CONFIG ============ */
+// Your deployed Cloudflare Worker URL, e.g. 'https://road-intel.yourname.workers.dev'.
+// Left empty on purpose: with no backend there is NO incident data, and the UI says so (no fake data).
+const WORKER_URL = '';
+const POLL_MS = 30000;             // matches ODOT's ~30 s state-highway refresh
+const COLORS = {crash:'#FF4057',hazard:'#FFB000',construction:'#FFE14D',closure:'#3B82F6',weather:'#34D399',publicsafety:'#A855F7'};
+const ICON = {crash:'💥',hazard:'⚠',construction:'🏗',closure:'🛣',weather:'🌧',publicsafety:'🚓'};
+
+/* ============ STATE / SETTINGS ============ */
+const $ = (id) => document.getElementById(id);
+const cfg = Object.assign({radius:5,unit:'mph',construction:true}, JSON.parse(localStorage.getItem('ri-cfg')||'{}'));
+const save = () => localStorage.setItem('ri-cfg', JSON.stringify(cfg));
+let me = null, items = [], providers = [], lastFetch = 0, following = true, trip = 0, prev = null, wxAt = 0;
+
+/* ============ UTIL ============ */
+const chipSet = (id, label, state, cls) => { const e=$(id); e.textContent=`${label} ${cls==='ok'?'●':'○'} ${state}`; e.className='chip '+cls; };
+const miles = (a,b,c,d) => { const R=3958.8,r=Math.PI/180,x=(c-a)*r,y=(d-b)*r;
+  const h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
+const ago = (iso) => { if(!iso) return 'time unknown'; const m=Math.round((Date.now()-new Date(iso))/60000); return m<1?'just now':m<90?`${m} min ago`:`${Math.round(m/60)} h ago`; };
+const el = (t,props={},kids=[]) => { const e=document.createElement(t); Object.assign(e,props); kids.forEach(k=>e.append(k)); return e; }; // textContent only: remote data is never injected as HTML
+
+/* ============ MAP ============ */
+const map = L.map('map',{zoomControl:false,attributionControl:true}).setView([43.8,-123.8],9);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+let meMarker = null;
+map.on('dragstart zoomstart', (e) => { if (e.type==='dragstart' || e.originalEvent) { following=false; $('recenter').style.display='block'; } });
+$('recenter').onclick = () => { following=true; $('recenter').style.display='none'; if(me) map.setView([me.lat,me.lon],Math.max(map.getZoom(),12)); };
+
+/* ============ GPS ============ */
+if (!navigator.geolocation) { $('gps').textContent='GPS ✕ UNSUPPORTED'; $('gps').className='chip bad'; }
+else navigator.geolocation.watchPosition((p) => {
+  const c=p.coords; me={lat:c.latitude,lon:c.longitude};
+  $('gps').textContent='GPS ● ONLINE'; $('gps').className='chip ok';
+  const v = c.speed==null ? null : c.speed*(cfg.unit==='mph'?2.23694:3.6); // m/s -> unit
+  $('speed').textContent = v==null ? '--' : Math.round(v);
+  $('hdg').textContent = c.heading==null||isNaN(c.heading) ? '--' : ['N','NE','E','SE','S','SW','W','NW'][Math.round(c.heading/45)%8]+' '+Math.round(c.heading)+'°';
+  $('pos').textContent = me.lat.toFixed(3)+', '+me.lon.toFixed(3); // no reverse-geocoding: that would send your position to a third party
+  if (prev && c.accuracy<50) { const d=miles(prev.lat,prev.lon,me.lat,me.lon); if(d>0.01){trip+=d; prev=me;} } else if(c.accuracy<50) prev=me;
+  $('trip').textContent = trip.toFixed(1)+' mi';
+  (meMarker ||= L.circleMarker([0,0],{radius:9,color:'#00E5FF',fillOpacity:.9,className:'glow'}).addTo(map)).setLatLng([me.lat,me.lon]);
+  if (following) map.setView([me.lat,me.lon],Math.max(map.getZoom(),12),{animate:false});
+  render(); weather();
+}, (e) => { $('gps').textContent='GPS ✕ '+(e.code===1?'PERMISSION DENIED':'NO FIX'); $('gps').className='chip bad'; },
+{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+
+/* ============ WEATHER (NWS, no key) ============ */
+// Sends position rounded to 2 decimals (~1 km) to api.weather.gov. Refreshes at most every 15 min.
+async function weather() {
+  if (Date.now()-wxAt < 900000) return; wxAt = Date.now();
+  try {
+    const pt = await (await fetch(`https://api.weather.gov/points/${me.lat.toFixed(2)},${me.lon.toFixed(2)}`)).json();
+    const p = (await (await fetch(pt.properties.forecastHourly)).json()).properties.periods[0];
+    $('wxT').textContent = `${p.temperature}°${p.temperatureUnit}`; $('wxS').textContent = `${p.shortForecast} · Wind ${p.windSpeed}`; chipSet('cWx','WEATHER','ONLINE','ok');
+  } catch { $('wxS').textContent = 'Weather unavailable'; chipSet('cWx','WEATHER','OFFLINE','bad'); wxAt = Date.now()-780000; }
+}
+
+/* ============ ROAD INTEL ============ */
+async function poll() {
+  if (!WORKER_URL) { providers=[{id:'cfg',name:'ROAD INTEL backend',status:'unconfigured'}]; return render(); }
+  try { const j = await (await fetch(WORKER_URL+'/api/intel')).json(); items=j.items; providers=j.providers; lastFetch=Date.now(); }
+  catch { providers=[{id:'net',name:'ROAD INTEL backend',status:'offline'}]; }
+  render();
+}
+function badge(p) {
+  if (p.status==='live') return lastFetch ? `<span class="ok">● LIVE · UPDATED ${Math.round((Date.now()-lastFetch)/1000)}s AGO</span>` : '';
+  const m={offline:'○ OFFLINE','schema-mismatch':'△ DATA NOT READABLE',unavailable:'○ UNAVAILABLE',unconfigured:'○ NOT CONFIGURED'};
+  return `<span class="${p.status==='offline'?'bad':'warn'}">${m[p.status]||p.status}</span>`;
+}
+function render() {
+  { const o = providers.find(p=>p.id==='odot-tripcheck');   // ROAD INTEL status chip
+    if (!WORKER_URL) chipSet('cRi','ROAD INTEL','NOT CONFIGURED','warn');
+    else if (o && o.status==='live') chipSet('cRi','ROAD INTEL','ONLINE','ok');
+    else if (o && o.status==='schema-mismatch') chipSet('cRi','ROAD INTEL','DATA NOT READABLE','warn');
+    else if (o || providers.length) chipSet('cRi','ROAD INTEL','OFFLINE','bad'); }
+  // status line (static strings + our own enum values only)
+  $('status').innerHTML = providers.map(p=>`${p.name} ${badge(p)}`).join('');
+  layer.clearLayers();
+  const list = $('list'); list.replaceChildren();
+  if (!me) return list.append(el('div',{className:'empty',textContent:'Waiting for GPS…'}));
+  const odotOk = providers.some(p=>p.id==='odot-tripcheck'&&p.status==='live');
+  if (!odotOk) return list.append(el('div',{className:'empty',textContent: !WORKER_URL ? 'DATA SOURCE NOT AVAILABLE — backend URL not configured.' : 'DATA SOURCE NOT AVAILABLE — ODOT feed not reachable or not readable.'}));
+  const near = items.filter(i=>cfg.construction||i.type!=='construction')
+    .map(i=>({...i,d:miles(me.lat,me.lon,i.latitude,i.longitude)})).filter(i=>i.d<=cfg.radius).sort((a,b)=>a.d-b.d);
+  near.forEach(i => L.circleMarker([i.latitude,i.longitude],{radius:8,color:COLORS[i.type],fillOpacity:.8,className:'glow'}).bindPopup(i.title).addTo(layer));
+  const hi = near.find(i=>(i.type==='crash'||i.type==='closure')&&i.d<=2);   // only HIGH priority gets a strong alert
+  $('alert').style.display = hi?'block':'none';
+  if (hi) $('alert').textContent = `${hi.type==='crash'?'CRASH REPORTED':'ROAD CLOSURE'} · ${hi.d.toFixed(1)} MI · ${hi.title}`;
+  if (!near.length) return list.append(el('div',{className:'empty',textContent:`No ODOT incidents within ${cfg.radius} mi.`}));
+  near.slice(0,10).forEach(i => list.append(el('details',{className:'ev'},[
+    Object.assign(el('summary',{},[
+      el('span',{},[`${ICON[i.type]} ${i.title.toUpperCase()}`, el('small',{textContent:`${i.source} · reported ${ago(i.timestamp)} · LIVE · ${i.severity.toUpperCase()}`})]),
+      el('span',{className:'dist',textContent:i.d.toFixed(1)+' MI'})]),{}),
+    el('div',{className:'empty',textContent:i.description||'No further detail.'}),
+    el('a',{href:i.url,target:'_blank',rel:'noopener',textContent:'Source ↗',style:'color:var(--cy2);padding:8px;display:inline-block'})
+  ])).style.setProperty('--c',COLORS[i.type]));
+}
+
+/* ============ SETTINGS UI ============ */
+$('gear').onclick=()=>$('set').style.display='block'; $('close').onclick=()=>$('set').style.display='none';
+$('sRadius').value=cfg.radius; $('sUnit').value=cfg.unit; $('sCons').checked=cfg.construction;
+$('unit').textContent = cfg.unit==='mph'?'MPH':'KM/H';
+$('unit').onclick=()=>{cfg.unit=cfg.unit==='mph'?'kmh':'mph';$('sUnit').value=cfg.unit;$('unit').textContent=cfg.unit==='mph'?'MPH':'KM/H';save();};
+$('sRadius').onchange=e=>{cfg.radius=+e.target.value;save();render();};
+$('sUnit').onchange=e=>{cfg.unit=e.target.value;$('unit').textContent=cfg.unit==='mph'?'MPH':'KM/H';save();};
+$('sCons').onchange=e=>{cfg.construction=e.target.checked;save();render();};
+
+/* ============ VISION // TRAFFIC (optional) ============ */
+// Talks to the laptop service. Open https://localhost:8443/viewer once in this browser and accept the
+// certificate warning, otherwise the browser will block these requests. Override the address with:
+//   localStorage.setItem('ri-vision-url','https://192.168.x.x:8443')
+const VISION_URL = localStorage.getItem('ri-vision-url') || 'https://localhost:8443';
+const WS_URL = VISION_URL.replace(/^http/, 'ws');
+const ICONS = {car:'🚗',truck:'🚚',bus:'🚌',motorcycle:'🏍',bicycle:'🚲'};
+const V = {on:false, view:'data', st:null, det:null, detAt:0, bmp:null, busy:false, timer:null, wsDet:null, wsCam:null};
+const vFresh = () => V.det && performance.now()-V.detAt < 1500;   // stale detections are never shown
+
+function vDraw() {
+  const cv = $('vCv'); if (V.view!=='camera' || !V.bmp) return;
+  const x = cv.getContext('2d'); cv.width=V.bmp.width; cv.height=V.bmp.height; x.drawImage(V.bmp,0,0);
+  if (!vFresh()) return;
+  const W=cv.width, H=cv.height, fs=Math.round(Math.max(12,W/40)); x.lineWidth=Math.max(2,W/320); x.font=`600 ${fs}px system-ui`;
+  for (const v of V.det.vehicles) {
+    const b=v.boundingBox, px=b.x1*W, py=b.y1*H, col=v.lowConfidence?'#FFB000':'#00E5FF';
+    x.strokeStyle=col; x.strokeRect(px,py,(b.x2-b.x1)*W,(b.y2-b.y1)*H);
+    const t=`${v.type.toUpperCase()}${v.id!=null?' #'+v.id:''} ${Math.round(v.confidence*100)}%`, ty=py-fs-4<0?py:py-fs-4;
+    x.fillStyle='rgba(5,7,10,.75)'; x.fillRect(px,ty,x.measureText(t).width+8,fs+4); x.fillStyle=col; x.fillText(t,px+4,ty+fs);
+  }
+}
+function vState() {
+  if (!V.on) return ['VISION DISABLED — tap ENABLE to connect to the laptop service.','dim'];
+  const s=V.st; if (!s) return ['LOCAL SERVER OFFLINE','bad'];
+  if (s.camera!=='online') return [s.phoneConnected?'CAMERA NOT SENDING FRAMES':'WAITING FOR CAMERA — PHONE DISCONNECTED','warn'];
+  if (s.ai==='loading') return ['AI MODEL LOADING…','warn'];
+  if (s.ai!=='online') return ['AI OFFLINE'+(s.aiReason?': '+s.aiReason:''),'bad'];
+  if (s.lowLight) return ['LOW LIGHT — DETECTION UNRELIABLE','warn'];
+  const n = vFresh()?V.det.vehicles.length:0; return [n?`VEHICLES DETECTED: ${n}`:'NO VEHICLES DETECTED','ok'];
+}
+function vUpdate() {
+  const s=V.on?V.st:null;
+  chipSet('cCam','CAMERA', !V.on?'OFF':!s?'OFFLINE':s.camera==='online'?'ONLINE':'WAITING', !V.on?'dim':s&&s.camera==='online'?'ok':'warn');
+  chipSet('cAi','AI', !V.on?'OFF':!s?'OFFLINE':s.ai==='online'?'ONLINE':s.ai==='loading'?'LOADING':'OFFLINE', !V.on?'dim':s&&s.ai==='online'?'ok':s&&s.ai==='loading'?'warn':'bad');
+  const [t,c]=vState(); $('vState').textContent=t; $('vState').className=c==='ok'?'ok':c;
+  const vs=V.on&&vFresh()?V.det.vehicles:[], n={}; vs.forEach(v=>n[v.type]=(n[v.type]||0)+1);
+  $('vCounts').textContent = V.on&&s&&s.ai==='online'&&s.camera==='online'
+    ? Object.entries(ICONS).map(([k,i])=>`${i} ${n[k]||0}`).join('  ')+`   · AI ${s.aiFps} FPS · ${s.inferenceMs} ms`+(vs.length?` · AVG CONF ${Math.round(100*vs.reduce((a,v)=>a+v.confidence,0)/vs.length)}%`:'') : '';
+}
+async function vPoll() { try { V.st = await (await fetch(VISION_URL+'/api/vision/status',{cache:'no-store'})).json(); } catch { V.st=null; } vUpdate(); }
+function vOpenDet() {
+  if (!V.on) return; const ws=V.wsDet=new WebSocket(WS_URL+'/ws/vision');
+  ws.onmessage=e=>{ V.det=JSON.parse(e.data); V.detAt=performance.now(); if(V.det.cleared) V.det=null; vUpdate(); vDraw(); };
+  ws.onclose=()=>{ if (V.on) setTimeout(vOpenDet,2000); };
+}
+function vOpenCam() {   // camera frames are only fetched while CAMERA VIEW is showing
+  if (!V.on || V.view!=='camera') return; const ws=V.wsCam=new WebSocket(WS_URL+'/ws/view');
+  ws.onmessage=async e=>{ if(V.busy) return; V.busy=true; const nb=await createImageBitmap(e.data); V.bmp?.close(); V.bmp=nb; vDraw(); V.busy=false; };
+  ws.onclose=()=>{ if (V.on && V.view==='camera') setTimeout(vOpenCam,2000); };
+}
+function vSetView(v) {
+  V.view=v; $('vView').textContent = v==='camera'?'DATA VIEW':'CAMERA VIEW'; $('vCv').style.display = v==='camera'?'block':'none';
+  if (V.wsCam) { const w=V.wsCam; V.wsCam=null; w.onclose=null; w.close(); }
+  if (v==='camera') vOpenCam(); else { V.bmp?.close(); V.bmp=null; }
+}
+function vEnable(on) {
+  V.on=on; cfg.vision=on; save(); $('vOn').textContent = on?'DISABLE':'ENABLE';
+  if (on) { vPoll(); V.timer=setInterval(()=>{vPoll();},2000); vOpenDet(); vOpenCam(); }
+  else { clearInterval(V.timer); [V.wsDet,V.wsCam].forEach(w=>{ if(w){ w.onclose=null; w.close(); } }); V.wsDet=V.wsCam=V.det=V.st=null; }
+  vUpdate();
+}
+$('vOn').onclick=()=>vEnable(!V.on); $('vView').onclick=()=>vSetView(V.view==='camera'?'data':'camera');
+setInterval(()=>{ if (V.on) vUpdate(); },1000);   // re-check staleness even if no messages arrive
+if (cfg.vision) vEnable(true);
+
+poll(); setInterval(poll,POLL_MS); setInterval(()=>{ if(providers.length) render(); },10000);
+</script>
+</body>
+</html>
